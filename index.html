@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>AI Visual Search</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f5f7fa;
+    color: #171717;
+}
+
+.container {
+    width: 92%;
+    max-width: 950px;
+    margin: auto;
+    padding: 45px 0;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+h1 {
+    margin: 0;
+    font-size: 46px;
+}
+
+.subtitle {
+    color: #666;
+    font-size: 18px;
+}
+
+.card {
+    background: white;
+    padding: 35px;
+    border-radius: 22px;
+    box-shadow: 0 12px 35px rgba(0,0,0,.08);
+}
+
+.upload {
+    text-align: center;
+    border: 2px dashed #ccc;
+    border-radius: 18px;
+    padding: 35px 20px;
+}
+
+input[type="file"] {
+    margin: 20px 0;
+    max-width: 100%;
+}
+
+#preview {
+    display: none;
+    max-width: 100%;
+    max-height: 420px;
+    margin: 20px auto;
+    border-radius: 16px;
+}
+
+button {
+    border: 0;
+    background: #111;
+    color: white;
+    padding: 15px 28px;
+    border-radius: 11px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+button:disabled {
+    opacity: .5;
+}
+
+#loading {
+    display: none;
+    text-align: center;
+    margin: 25px 0;
+    font-weight: bold;
+}
+
+#error {
+    color: #c00000;
+    text-align: center;
+    margin-top: 20px;
+}
+
+#result {
+    display: none;
+    margin-top: 35px;
+}
+
+.box {
+    background: #f1f3f5;
+    padding: 18px;
+    border-radius: 13px;
+    margin-top: 10px;
+}
+
+.name {
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.category {
+    display: inline-block;
+    margin-top: 12px;
+    padding: 8px 14px;
+    border-radius: 20px;
+    background: #e5e7eb;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.search-card {
+    border: 1px solid #ddd;
+    border-radius: 15px;
+    padding: 18px;
+    margin-top: 15px;
+}
+
+.search-card h3 {
+    margin-top: 0;
+}
+
+.links {
+    display: grid;
+    grid-template-columns: repeat(
+        auto-fit,
+        minmax(140px, 1fr)
+    );
+    gap: 10px;
+}
+
+.links a {
+    text-decoration: none;
+    padding: 12px;
+    text-align: center;
+    background: #111;
+    color: white;
+    border-radius: 9px;
+    font-weight: bold;
+}
+
+.made {
+    text-align: center;
+    color: #777;
+    margin-top: 25px;
+    font-size: 13px;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<header>
+    <h1>AI Visual Search</h1>
+    <p class="subtitle">
+        Upload a picture and let AI understand it.
+    </p>
+</header>
+
+
+<div class="card">
+
+    <div class="upload">
+
+        <h2>📷 Upload an Image</h2>
+
+        <p>
+            Choose a photo of a product, object or scene.
+        </p>
+
+        <input
+            type="file"
+            id="imageInput"
+            accept="image/*"
+        >
+
+        <img
+            id="preview"
+            alt="Image preview"
+        >
+
+        <br>
+
+        <button id="identifyButton">
+            Identify with AI
+        </button>
+
+    </div>
+
+
+    <div id="loading">
+        🤖 Gemini AI is analyzing your image...
+    </div>
+
+    <div id="error"></div>
+
+
+    <div id="result">
+
+        <h2>AI Identification</h2>
+
+        <div class="box">
+
+            <div
+                id="name"
+                class="name"
+            ></div>
+
+            <div
+                id="category"
+                class="category"
+            ></div>
+
+            <p id="description"></p>
+
+        </div>
+
+
+        <h2>
+            Search Similar Products
+        </h2>
+
+        <div id="searches"></div>
+
+    </div>
+
+</div>
+
+
+<div class="made">
+    Made by AK
+</div>
+
+</div>
+
+
+<script>
+
+const imageInput =
+    document.getElementById("imageInput");
+
+const preview =
+    document.getElementById("preview");
+
+const identifyButton =
+    document.getElementById("identifyButton");
+
+const loading =
+    document.getElementById("loading");
+
+const error =
+    document.getElementById("error");
+
+const result =
+    document.getElementById("result");
+
+const nameBox =
+    document.getElementById("name");
+
+const categoryBox =
+    document.getElementById("category");
+
+const descriptionBox =
+    document.getElementById("description");
+
+const searches =
+    document.getElementById("searches");
+
+
+imageInput.addEventListener(
+    "change",
+    function () {
+
+        const file =
+            imageInput.files[0];
+
+        if (!file) return;
+
+        preview.src =
+            URL.createObjectURL(file);
+
+        preview.style.display =
+            "block";
+
+        result.style.display =
+            "none";
+
+        error.textContent =
+            "";
+    }
+);
+
+
+identifyButton.addEventListener(
+    "click",
+    async function () {
+
+        const file =
+            imageInput.files[0];
+
+        if (!file) {
+
+            error.textContent =
+                "Please upload an image first.";
+
+            return;
+        }
+
+
+        const formData =
+            new FormData();
+
+        formData.append(
+            "image",
+            file
+        );
+
+
+        identifyButton.disabled =
+            true;
+
+        loading.style.display =
+            "block";
+
+        error.textContent =
+            "";
+
+        result.style.display =
+            "none";
+
+
+        try {
+
+            const response =
+                await fetch(
+                    "/identify",
+                    {
+                        method: "POST",
+                        body: formData
+                    }
+                );
+
+
+            const data =
+                await response.json();
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    data.error ||
+                    "AI analysis failed."
+                );
+            }
+
+
+            nameBox.textContent =
+                data.name;
+
+            categoryBox.textContent =
+                "Category: " +
+                data.category;
+
+            descriptionBox.textContent =
+                data.description;
+
+
+            searches.innerHTML =
+                "";
+
+
+            data.search_queries.forEach(
+                function (searchQuery, index) {
+
+                    const card =
+                        document.createElement(
+                            "div"
+                        );
+
+                    card.className =
+                        "search-card";
+
+
+                    const encoded =
+                        encodeURIComponent(
+                            searchQuery
+                        );
+
+
+                    card.innerHTML = `
+                        <h3>
+                            ${searchQuery}
+                        </h3>
+
+                        <div class="links">
+
+                            <a
+                                href="https://www.google.com/search?q=${encoded}"
+                                target="_blank">
+                                Google
+                            </a>
+
+                            <a
+                                href="https://www.google.com/search?tbm=isch&q=${encoded}"
+                                target="_blank">
+                                Images
+                            </a>
+
+                            <a
+                                href="https://www.bing.com/search?q=${encoded}"
+                                target="_blank">
+                                Bing
+                            </a>
+
+                            <a
+                                href="https://www.daraz.pk/catalog/?q=${encoded}"
+                                target="_blank">
+                                Daraz
+                            </a>
+
+                            <a
+                                href="https://www.amazon.com/s?k=${encoded}"
+                                target="_blank">
+                                Amazon
+                            </a>
+
+                        </div>
+                    `;
+
+
+                    searches.appendChild(
+                        card
+                    );
+                }
+            );
+
+
+            result.style.display =
+                "block";
+
+        }
+
+        catch (e) {
+
+            error.textContent =
+                "Error: " + e.message;
+
+        }
+
+        finally {
+
+            identifyButton.disabled =
+                false;
+
+            loading.style.display =
+                "none";
+
+        }
+
+    }
+);
+
+</script>
+
+</body>
+</html>
